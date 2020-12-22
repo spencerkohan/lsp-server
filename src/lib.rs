@@ -8,8 +8,11 @@ mod stdio;
 mod error;
 mod socket;
 mod req_queue;
+mod socket_listener;
 
-use std::net::{TcpStream, ToSocketAddrs};
+use std::error::Error;
+
+use std::net::{TcpListener, TcpStream, ToSocketAddrs};
 
 use crossbeam_channel::{Receiver, Sender};
 
@@ -43,6 +46,17 @@ impl Connection {
         let (sender, receiver, io_threads) = socket::socket_transport(stream);
         (Connection { sender, receiver }, io_threads)
     }
+
+    /// Create connection by listening over a TCP socket.
+    ///
+    /// Use this to create a real language server.
+    pub fn socket_listener<A: ToSocketAddrs>(addr: A) -> Result<(Connection, IoThreads), Box<dyn Error + Sync + Send>> {
+        let listener = TcpListener::bind(addr)?;
+        let (stream, _) = listener.accept()?;
+        let (sender, receiver, io_threads) = socket::socket_transport(stream);
+        Ok((Connection { sender, receiver }, io_threads))
+    }
+    
 
     /// Creates a pair of connected connections.
     ///
